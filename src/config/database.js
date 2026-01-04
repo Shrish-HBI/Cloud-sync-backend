@@ -14,7 +14,11 @@ const poolConfig = {
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0
+  keepAliveInitialDelay: 0,
+  // SSL configuration for production databases (Azure, AWS RDS, etc.)
+  ssl: process.env.DB_SSL === 'true' ? {
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
+  } : false
 };
 
 // Create connection pool
