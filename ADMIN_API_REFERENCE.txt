@@ -1,0 +1,535 @@
+================================================================================
+ADMIN CLIENT MANAGEMENT API - COMPLETE REFERENCE
+================================================================================
+
+Base URL: http://localhost:5000/api/v1/admin
+
+AUTHENTICATION REQUIRED FOR ALL ENDPOINTS:
+- Header: Authorization: Bearer <ADMIN_JWT_TOKEN>
+- Admin role required
+
+⚠️ IMPORTANT: You MUST include the Authorization header in EVERY request:
+   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+   Without this header, you will get error: "NO_TOKEN"
+
+How to get the token:
+1. Login via POST http://localhost:5000/api/v1/auth/login
+   Body: { "email": "admin@truebackup.in", "password": "Admin@123" }
+2. Extract the token from response: response.data.token
+3. Store it (localStorage, sessionStorage, or memory)
+4. Include it in all subsequent requests
+
+================================================================================
+1. VIEW ALL CLIENTS (List)
+================================================================================
+
+GET /clients?page=1&limit=20&status=active&search=keyword
+
+Response:
+{
+  "success": true,
+  "data": {
+    "clients": [
+      {
+        "id": "uuid",
+        "name": "Client Name",
+        "email": "email@example.com",
+        "company": "Company Name",
+        "storageQuotaGb": 100,
+        "storageUsedGb": 25.5,
+        "egressUsedGb": 10.2,
+        "egressFreeLimitGb": 2048,
+        "status": "active",
+        "storageUsedPercent": 25.5,
+        "egressUsedPercent": 0.5,
+        "filesCount": 150,
+        "foldersCount": 12,
+        "storageConfigured": true,
+        "createdAt": "2026-01-03T10:00:00.000Z",
+        "lastActiveAt": "2026-01-03T15:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 5,
+      "totalItems": 95,
+      "itemsPerPage": 20
+    }
+  }
+}
+
+================================================================================
+2. VIEW DETAILS (Single Client)
+================================================================================
+
+GET /clients/:clientId
+
+Response:
+{
+  "success": true,
+  "data": {
+    "client": {
+      "id": "uuid",
+      "userId": "user-uuid",
+      "name": "Client Name",
+      "email": "email@example.com",
+      "company": "Company Name",
+      "storageQuotaGb": 100,
+      "storageUsedGb": 25.5,
+      "egressUsedGb": 10.2,
+      "egressFreeLimitGb": 2048,
+      "status": "active",
+      "createdAt": "2026-01-03T10:00:00.000Z",
+      "lastActiveAt": "2026-01-03T15:00:00.000Z"
+    },
+    "storageConfig": {
+      "bucketName": "client-bucket",
+      "endpoint": "s3.wasabisys.com",
+      "region": "us-east-1",
+      "bucketPrefix": "client-data/",
+      "isVerified": true,
+      "lastVerifiedAt": "2026-01-03T10:00:00.000Z"
+    },
+    "stats": {
+      "storageUsedPercent": 25.5,
+      "egressUsedPercent": 0.5,
+      "chargeableEgressGb": 0,
+      "filesCount": 150,
+      "foldersCount": 12,
+      "totalDownloads": 450,
+      "recentActivity": [
+        {
+          "action": "file_upload",
+          "details": "Uploaded document.pdf",
+          "timestamp": "2026-01-03T14:30:00.000Z"
+        }
+      ]
+    }
+  }
+}
+
+================================================================================
+3. EDIT CLIENT
+================================================================================
+
+PUT /clients/:clientId
+Content-Type: application/json
+
+Request Body (all fields optional):
+{
+  "name": "Updated Name",
+  "company": "Updated Company",
+  "storageQuotaGb": 500,
+  "egressFreeLimitGb": 3072,
+  "status": "active",
+  "storageConfig": {
+    "bucketName": "new-bucket",
+    "endpoint": "s3.wasabisys.com",
+    "region": "us-west-1",
+    "accessKeyId": "ACCESS_KEY",
+    "secretAccessKey": "SECRET_KEY",
+    "bucketPrefix": "prefix/"
+  }
+}
+
+Response:
+{
+  "success": true,
+  "message": "Client updated successfully",
+  "data": {
+    "client": { /* updated client object */ }
+  }
+}
+
+================================================================================
+4. SUSPEND/ACTIVATE CLIENT
+================================================================================
+
+PATCH /clients/:clientId/status
+Content-Type: application/json
+
+Request Body (to suspend):
+{
+  "status": "suspended"
+}
+
+Request Body (to activate):
+{
+  "status": "active"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Client suspended successfully"
+}
+
+================================================================================
+5. RESET PASSWORD
+================================================================================
+
+POST /clients/:clientId/reset-password
+Content-Type: application/json
+
+Request Body:
+{
+  "newPassword": "NewSecurePass123!"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Password reset successfully. All active sessions have been terminated.",
+  "data": {
+    "clientName": "Client Name",
+    "email": "client@example.com"
+  }
+}
+
+Note: Password must be at least 8 characters long.
+This will immediately invalidate all active sessions for the client.
+
+================================================================================
+6. DELETE CLIENT
+================================================================================
+
+DELETE /clients/:clientId
+
+Response:
+{
+  "success": true,
+  "message": "Client deleted successfully"
+}
+
+WARNING: This permanently deletes the client and ALL associated data including:
+- User account
+- Client profile
+- Files metadata
+- Activity logs
+- Sessions
+- Storage configuration
+- Download history
+- Alerts
+
+This action cannot be undone.
+
+================================================================================
+7. CREATE CLIENT
+================================================================================
+
+POST /clients
+Content-Type: application/json
+
+Request Body:
+{
+  "name": "John Doe",
+  "email": "john@company.com",
+  "password": "SecurePass123!",
+  "company": "Acme Corp",
+  "storageQuotaGb": 500,
+  "egressFreeLimitGb": 2048,
+  "storageConfig": {
+    "bucketName": "acme-bucket",
+    "endpoint": "s3.wasabisys.com",
+    "region": "us-east-1",
+    "accessKeyId": "ACCESS_KEY",
+    "secretAccessKey": "SECRET_KEY",
+    "bucketPrefix": "acme/"
+  }
+}
+
+Required fields:
+- name
+- email
+- password
+
+Optional fields:
+- company
+- storageQuotaGb (default: 100)
+- egressFreeLimitGb (default: 2048)
+- storageConfig (optional, but if provided all sub-fields are required)
+
+Response:
+{
+  "success": true,
+  "message": "Client created successfully",
+  "data": {
+    "client": { /* created client object */ }
+  }
+}
+
+================================================================================
+8. GET SYSTEM STATISTICS
+================================================================================
+
+GET /stats
+
+Response:
+{
+  "success": true,
+  "data": {
+    "totalClients": 95,
+    "activeClients": 87,
+    "suspendedClients": 8,
+    "totalStorageUsedGb": 12450.5,
+    "totalStorageQuotaGb": 50000,
+    "totalEgressThisMonthGb": 4520.3,
+    "totalFiles": 125000,
+    "recentClients": [
+      {
+        "id": "uuid",
+        "name": "Client Name",
+        "email": "email@example.com",
+        "company": "Company Name",
+        "createdAt": "2026-01-03T10:00:00.000Z"
+      }
+    ],
+    "storageAlerts": [
+      {
+        "id": "uuid",
+        "clientId": "uuid",
+        "clientName": "Client Name",
+        "alertType": "storage_warning",
+        "message": "Client has used 90% of storage quota",
+        "createdAt": "2026-01-03T14:00:00.000Z"
+      }
+    ],
+    "egressAlerts": [
+      {
+        "id": "uuid",
+        "clientId": "uuid",
+        "clientName": "Client Name",
+        "alertType": "egress_warning",
+        "message": "You have used 80% of your free egress limit",
+        "createdAt": "2026-01-03T12:30:00.000Z"
+      }
+    ]
+  }
+}
+
+================================================================================
+9. GET ACTIVITY LOGS
+================================================================================
+
+GET /activity-logs?page=1&limit=50&clientId=xxx&action=file_upload&startDate=2026-01-01&endDate=2026-01-31
+
+Query Parameters (all optional):
+- page: Page number (default: 1)
+- limit: Items per page (default: 50)
+- clientId: Filter by specific client
+- action: Filter by action type (e.g., file_upload, file_download, login, etc.)
+- startDate: Start date filter (YYYY-MM-DD format)
+- endDate: End date filter (YYYY-MM-DD format)
+
+Response:
+{
+  "success": true,
+  "data": {
+    "logs": [
+      {
+        "id": "uuid",
+        "userName": "John Doe",
+        "userRole": "client",
+        "action": "file_upload",
+        "details": "Uploaded document.pdf (2.5 MB)",
+        "resourceType": "file",
+        "resourceId": "uuid",
+        "ipAddress": "192.168.1.100",
+        "createdAt": "2026-01-03T15:20:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 10,
+      "totalItems": 500,
+      "itemsPerPage": 50
+    }
+  }
+}
+
+================================================================================
+FRONTEND INTEGRATION EXAMPLE (JavaScript/Fetch)
+================================================================================
+
+const API_BASE = 'http://localhost:5000/api/v1/admin';
+
+// Step 1: Login and store token
+const login = async () => {
+  const response = await fetch('http://localhost:5000/api/v1/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'admin@truebackup.in',
+      password: 'Admin@123'
+    })
+  });
+  const data = await response.json();
+  
+  if (data.success) {
+    // Store the token
+    localStorage.setItem('token', data.data.token);
+    console.log('Login successful!');
+    return data.data.token;
+  }
+};
+
+// Step 2: Get token for requests
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No token found. Please login first.');
+  }
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+};
+
+// 1. View All Clients
+const getClients = async (page = 1, limit = 20, filters = {}) => {
+  const params = new URLSearchParams({ page, limit, ...filters });
+  const response = await fetch(`${API_BASE}/clients?${params}`, {
+    headers: getAuthHeaders()
+  });
+  return response.json();
+};
+
+// 2. View Client Details
+const viewDetails = async (clientId) => {
+  const response = await fetch(`${API_BASE}/clients/${clientId}`, {
+    headers: getAuthHeaders()
+  });
+  return response.json();
+};
+
+// 3. Edit Client
+const editClient = async (clientId, updates) => {
+  const response = await fetch(`${API_BASE}/clients/${clientId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates)
+  });
+  return response.json();
+};
+
+// 4. Suspend Client
+const suspendClient = async (clientId) => {
+  const response = await fetch(`${API_BASE}/clients/${clientId}/status`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status: 'suspended' })
+  });
+  return response.json();
+};
+
+// 5. Activate Client
+const activateClient = async (clientId) => {
+  const response = await fetch(`${API_BASE}/clients/${clientId}/status`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status: 'active' })
+  });
+  return response.json();
+};
+
+// 6. Reset Password
+const resetPassword = async (clientId, newPassword) => {
+  const response = await fetch(`${API_BASE}/clients/${clientId}/reset-password`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ newPassword })
+  });
+  return response.json();
+};
+
+// 7. Delete Client
+const deleteClient = async (clientId) => {
+  const response = await fetch(`${API_BASE}/clients/${clientId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  return response.json();
+};
+
+// 8. Create Client
+const createClient = async (clientData) => {
+  const response = await fetch(`${API_BASE}/clients`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(clientData)
+  });
+  return response.json();
+};
+
+// 9. Get System Stats
+const getSystemStats = async () => {
+  const response = await fetch(`${API_BASE}/stats`, {
+    headers: getAuthHeaders()
+  });
+  return response.json();
+};
+
+// 10. Get Activity Logs
+const getActivityLogs = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const response = await fetch(`${API_BASE}/activity-logs?${params}`, {
+    headers: getAuthHeaders()
+  });
+  return response.json();
+};
+
+================================================================================
+ERROR RESPONSES
+================================================================================
+
+All endpoints may return the following error responses:
+
+400 Bad Request:
+{
+  "success": false,
+  "message": "Error description"
+}
+
+401 Unauthorized:
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+
+403 Forbidden:
+{
+  "success": false,
+  "message": "Access denied. Admin privileges required."
+}
+
+404 Not Found:
+{
+  "success": false,
+  "message": "Client not found"
+}
+
+500 Internal Server Error:
+{
+  "success": false,
+  "message": "Error description",
+  "error": "Detailed error message"
+}
+
+================================================================================
+NOTES
+================================================================================
+
+1. All timestamps are in ISO 8601 format (UTC)
+2. All file sizes are in GB (Gigabytes) with 2-4 decimal precision
+3. Client IDs and User IDs are UUIDs
+4. Status can only be 'active' or 'suspended'
+5. Storage configuration credentials are stored encrypted at rest
+6. Deleting a client cascades to all related data (cannot be undone)
+7. Resetting password invalidates all active sessions immediately
+8. Egress tracking resets monthly on the 1st day of each month
+9. Activity logs are kept indefinitely for audit purposes
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

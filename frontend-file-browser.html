@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud File Browser</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: #2563eb;
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .logout-btn {
+      background: white;
+      color: #2563eb;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .breadcrumb {
+      padding: 16px 20px;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .breadcrumb-item {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .breadcrumb-item:hover {
+      text-decoration: underline;
+    }
+
+    .breadcrumb-separator {
+      color: #6b7280;
+    }
+
+    .toolbar {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stats {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .refresh-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .refresh-btn:hover {
+      background: #1d4ed8;
+    }
+
+    .file-list {
+      min-height: 400px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      border-bottom: 1px solid #e5e7eb;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .file-item:hover {
+      background: #f9fafb;
+    }
+
+    .file-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      font-size: 24px;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 500;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    .file-meta {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .loading {
+      padding: 40px;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    .error {
+      padding: 40px;
+      text-align: center;
+      color: #dc2626;
+    }
+
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .login-container h2 {
+      margin-bottom: 24px;
+      color: #111827;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .login-btn {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 16px;
+    }
+
+    .login-btn:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Form -->
+  <div id="loginContainer" class="login-container" style="display: none;">
+    <h2>Login to Cloud Storage</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required>
+      </div>
+      <button type="submit" class="login-btn">Login</button>
+    </form>
+    <p id="loginError" style="color: #dc2626; margin-top: 12px; display: none;"></p>
+  </div>
+
+  <!-- File Browser -->
+  <div id="browserContainer" class="container" style="display: none;">
+    <div class="header">
+      <h1>📁 Cloud File Browser</h1>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="breadcrumb" id="breadcrumb">
+      <a href="#" class="breadcrumb-item" onclick="navigateTo('')">🏠 Home</a>
+    </div>
+
+    <div class="toolbar">
+      <div class="stats" id="stats">Loading...</div>
+      <button class="refresh-btn" onclick="loadFiles()">🔄 Refresh</button>
+    </div>
+
+    <div class="file-list" id="fileList">
+      <div class="loading">Loading files...</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:5000/api/v1';
+    let currentPath = '';
+    let token = localStorage.getItem('token');
+
+    // Check if user is logged in
+    function checkAuth() {
+      if (token) {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('browserContainer').style.display = 'block';
+        loadFiles();
+      } else {
+        document.getElementById('loginContainer').style.display = 'block';
+        document.getElementById('browserContainer').style.display = 'none';
+      }
+    }
+
+    // Login
+    document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('loginError');
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          token = data.data.token;
+          localStorage.setItem('token', token);
+          checkAuth();
+        } else {
+          errorEl.textContent = data.message || 'Login failed';
+          errorEl.style.display = 'block';
+        }
+      } catch (error) {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.style.display = 'block';
+      }
+    });
+
+    // Logout
+    function logout() {
+      localStorage.removeItem('token');
+      token = null;
+      currentPath = '';
+      checkAuth();
+    }
+
+    // Load files
+    async function loadFiles() {
+      const fileList = document.getElementById('fileList');
+      fileList.innerHTML = '<div class="loading">Loading files...</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/browse/files?prefix=${encodeURIComponent(currentPath)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          if (data.error?.code === 'NO_TOKEN' || data.error?.code === 'SESSION_INVALID') {
+            logout();
+            return;
+          }
+          throw new Error(data.error?.message || 'Failed to load files');
+        }
+
+        updateBreadcrumb();
+        updateStats(data.data);
+        renderFiles(data.data.items);
+      } catch (error) {
+        fileList.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    }
+
+    // Update breadcrumb
+    function updateBreadcrumb() {
+      const breadcrumb = document.getElementById('breadcrumb');
+      let html = '<a href="#" class="breadcrumb-item" onclick="navigateTo(\'\')">🏠 Home</a>';
+
+      if (currentPath) {
+        const parts = currentPath.split('/').filter(p => p);
+        let path = '';
+        
+        parts.forEach((part, index) => {
+          path += part + '/';
+          html += '<span class="breadcrumb-separator">/</span>';
+          html += `<a href="#" class="breadcrumb-item" onclick="navigateTo('${path}')">${part}</a>`;
+        });
+      }
+
+      breadcrumb.innerHTML = html;
+    }
+
+    // Update stats
+    function updateStats(data) {
+      const stats = document.getElementById('stats');
+      stats.textContent = `${data.folderCount} folders, ${data.fileCount} files`;
+    }
+
+    // Render files
+    function renderFiles(items) {
+      const fileList = document.getElementById('fileList');
+
+      if (items.length === 0) {
+        fileList.innerHTML = '<div class="empty">This folder is empty</div>';
+        return;
+      }
+
+      let html = '';
+      
+      items.forEach(item => {
+        const icon = item.type === 'folder' ? '📁' : getFileIcon(item.name);
+        const size = item.type === 'folder' ? '' : formatSize(item.size);
+        const date = item.lastModified ? new Date(item.lastModified).toLocaleString() : '';
+        const meta = [size, date].filter(Boolean).join(' • ');
+
+        html += `
+          <div class="file-item" onclick="${item.type === 'folder' ? `navigateTo('${item.path}')` : `downloadFile('${item.path}', '${item.name}')`}">
+            <div class="file-icon">${icon}</div>
+            <div class="file-info">
+              <div class="file-name">${item.name}</div>
+              <div class="file-meta">${meta}</div>
+            </div>
+          </div>
+        `;
+      });
+
+      fileList.innerHTML = html;
+    }
+
+    // Navigate to folder
+    function navigateTo(path) {
+      currentPath = path;
+      loadFiles();
+      return false;
+    }
+
+    // Get file icon
+    function getFileIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      const icons = {
+        pdf: '📄', doc: '📝', docx: '📝', txt: '📝',
+        xls: '📊', xlsx: '📊', csv: '📊',
+        jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', svg: '🖼️',
+        mp4: '🎬', avi: '🎬', mov: '🎬',
+        mp3: '🎵', wav: '🎵',
+        zip: '🗜️', rar: '🗜️', '7z': '🗜️',
+      };
+      return icons[ext] || '📄';
+    }
+
+    // Format file size
+    function formatSize(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Download file (placeholder - implement with your file download API)
+    function downloadFile(path, name) {
+      alert(`Download functionality for "${name}" will be implemented with your file download API`);
+      // TODO: Implement actual download using your getDownloadUrl endpoint
+    }
+
+    // Initialize
+    checkAuth();
+  </script>
+</body>
+</html>
