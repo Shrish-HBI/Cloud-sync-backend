@@ -148,8 +148,8 @@ class AuthController {
   async loginApp(req, res, next) {
     try {
       const { email, password } = req.body;
-      const ipAddress = req.ip;
-      const userAgent = req.get('user-agent');
+      const ipAddress = req.ip || null;
+      const userAgent = req.get('user-agent') || null;
 
       // Get user with roles
       const users = await query(

@@ -1,4 +1,4 @@
-import { S3Client, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, ListObjectsV2Command, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import pool from '../config/database.js';
@@ -383,6 +383,110 @@ export const getDownloadUrl = async (req, res) => {
       error: { 
         code: 'DOWNLOAD_ERROR', 
         message: 'Failed to generate download URL',
+        details: error.message 
+      }
+    });
+  }
+};
+
+/**
+ * Delete file from S3 bucket
+ */
+export const deleteFile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { filePath } = req.body;
+
+    if (!filePath) {
+      return res.status(400).json({
+        success: false,
+        error: { 
+          code: 'MISSING_FILE_PATH', 
+          message: 'File path is required' 
+        }
+      });
+    }
+
+    // Get client's storage config from database
+    const [clients] = await pool.query(
+      `SELECT c.id as client_id, csc.*
+       FROM clients c
+       LEFT JOIN client_storage_config csc ON c.id = csc.client_id
+       WHERE c.user_id = ?`,
+      [userId]
+    );
+
+    if (clients.length === 0 || !clients[0].client_id) {
+      return res.status(404).json({
+        success: false,
+        error: { 
+          code: 'CLIENT_NOT_FOUND', 
+          message: 'Client profile not found' 
+        }
+      });
+    }
+
+    const storageConfig = clients[0];
+    
+    if (!storageConfig.bucket_name) {
+      return res.status(404).json({
+        success: false,
+        error: { 
+          code: 'NO_STORAGE_CONFIG', 
+          message: 'Storage not configured for this client' 
+        }
+      });
+    }
+
+    // Create S3 client
+    const s3Client = new S3Client({
+      endpoint: storageConfig.endpoint,
+      region: storageConfig.region,
+      credentials: {
+        accessKeyId: storageConfig.access_key_id,
+        secretAccessKey: storageConfig.secret_access_key,
+      },
+      forcePathStyle: true,
+    });
+
+    const bucketPrefix = storageConfig.bucket_prefix || '';
+    const fullPath = bucketPrefix + filePath;
+
+    // Delete the file from S3
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: storageConfig.bucket_name,
+      Key: fullPath,
+    });
+
+    await s3Client.send(deleteCommand);
+
+    // Mark file as deleted in database if it exists
+    try {
+      await pool.query(
+        'UPDATE files SET deleted_at = NOW() WHERE client_id = ? AND path = ?',
+        [storageConfig.client_id, filePath]
+      );
+    } catch (dbError) {
+      // Log but don't fail if database update fails
+      logger.warn('Failed to update file deletion in database:', dbError);
+    }
+
+    logger.info(`File deleted: ${filePath} for client ${storageConfig.client_id}`);
+
+    res.json({
+      success: true,
+      message: 'File deleted successfully',
+      data: {
+        filePath: filePath
+      }
+    });
+  } catch (error) {
+    logger.error('Error deleting file:', error);
+    res.status(500).json({
+      success: false,
+      error: { 
+        code: 'DELETE_ERROR', 
+        message: 'Failed to delete file',
         details: error.message 
       }
     });
